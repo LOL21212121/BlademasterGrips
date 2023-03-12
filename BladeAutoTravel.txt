@@ -1,0 +1,423 @@
+local Library = loadstring(game:HttpGet("https://pastebin.com/raw/YBL746Lw"))()
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = game:GetService("Workspace").CurrentCamera
+local PhysicsService = game:GetService("PhysicsService")
+local NoFall, NoClipHook1, NoClipHook2 = nil, nil, nil
+local FallFunction = nil
+local Character = Player.Character
+local Humanoid = Character.Humanoid
+local HumanoidRootPart = Character.HumanoidRootPart
+local CoreGui = game:GetService("CoreGui")
+local Mouse = Player:GetMouse()
+local params = RaycastParams.new()
+params.FilterDescendantsInstances = {Player.Character}
+params.FilterType = Enum.RaycastFilterType.Blacklist
+local FlySpeed = 10
+
+local ApplyParts = {}
+local PlayerList = {}
+local toggles = {
+    ["TogglePlayerEsp"] = false,
+    ["ToggleFly"] = false,
+    ["ToggleNoclip"] = false,
+    ["ToggleNoFall"] = false,
+}
+
+
+local NoclipGroups = {
+    [true] = "WalkThrough",
+    [false] = "Default"
+}
+
+local Window = Library.CreateLib("Trash hub", "DarkTheme")
+local Main = Window:NewTab("Main")
+local Main2 = Window:NewTab("Tweening")
+local Section1 = Main:NewSection("Main options")
+local Section2 = Main2:NewSection("Tweening options")
+
+
+local function SetState(Name,State) 
+    for i,v in pairs(CoreGui:GetDescendants()) do
+        if v.Name and v.Name == "togName" and v.Text == Name and v.Parent:FindFirstChild("toggleEnabled") then
+            v.Parent:FindFirstChild("toggleEnabled").ImageTransparency = State
+            return
+        end
+    end
+end
+
+for i,v in pairs(getgc()) do
+    if getinfo(v).name == "fallState" and islclosure(v) and #getupvalues(v) > 0 then
+        FallFunction = v
+    end
+end
+if FallFunction then
+    NoFall = hookfunction(FallFunction, function(args)
+        if toggles["ToggleNoFall"] then
+            return
+        else
+            return NoFall(args)
+        end
+    end)
+end
+for i,v in pairs(game.Workspace:GetDescendants()) do
+    if v:IsA("BasePart") then
+        ApplyParts[v] = v.CollisionGroup
+    end
+end
+
+NoClipHook1 = hookmetamethod(game,"__index",function(k,v) -- Hides CharacterParts CollisionGroup check
+    if not checkcaller() and ApplyParts[k] and tostring(v) == "CollisionGroup" then
+        return ApplyParts[k]
+    end
+
+    return NoClipHook1(k,v)
+end)
+
+NoClipHook2 = hookmetamethod(game,"__newindex",function(Self,i,v) 
+    if not checkcaller() and ApplyParts[Self] and tostring(v) == "CollisionGroup" then
+        ApplyParts[Self] = mt1(Self,i,v)
+        return NoClipHook2(Self,i,"WalkThrough")
+    end
+
+    return NoClipHook2(Self,i,v)
+end)
+
+coroutine.wrap(function(i,p)
+    RunService.RenderStepped:Connect(function()
+        pcall(function()
+            if toggles["ToggleNoclip"] and not toggles["ToggleFly"] then
+                local result = game.Workspace:Raycast(Player.Character.Head.Position, Vector3.new(0,-50,0), params)
+                if result then
+                    PhysicsService:SetPartCollisionGroup(result.Instance,"Default")
+                    if OldFloor ~= result.Instance then
+                        PhysicsService:SetPartCollisionGroup(OldFloor,"WalkThrough")
+                        OldFloor = result.Instance
+                    end
+                end
+            end
+        end)
+    end)
+end)()
+
+
+
+function ApplyEsp(Instance, Components, Color, Properties, Toggle)
+    -- Instances:
+    local Text = Drawing.new("Text")
+   
+    Text.Visible = false
+    Text.ZIndex = 1
+    Text.Transparency = 1
+    Text.Color = Color
+
+    Text.Text = "N/A"
+    Text.Center = true
+    Text.Outline = true
+    Text.Size = 18
+    Text.Font = 2
+    function AdemEstMoche(Instance,Components,Properties,Toggle)
+        RunService.RenderStepped:Connect(function()
+            xpcall(function()
+                local Part = Instance
+                for i,v in pairs(Components) do
+                    Part = Part[v]    
+                end
+                local vector, OnScreen = Camera:WorldToScreenPoint(Part.Position)
+                if OnScreen and toggles[Toggle] and Instance then
+                    Text.Position = Vector2.new(vector.X, vector.Y)
+                    Text.Visible = true
+                    local Name = Properties["Custom name"] and (Properties["Custom name"]) or Properties["Name"] and (Instance.Name) or ""
+                    local Health = Properties["Health"] and (" | " .. tostring(math.floor(Instance.Character.Humanoid.Health / Instance.Character.Humanoid.MaxHealth * 100))) or ""
+                    local Distance = Properties["Distance"] and ("\n" .. tostring(math.floor((Player.Character.HumanoidRootPart.Position - Part.Position).Magnitude))) or ""
+                    Text.Text = Name .. Health .. Distance 
+    
+
+                else
+                    Text.Visible = false
+                end
+            end, function()
+            Text.Visible = false
+            end)
+        end)
+    end
+    coroutine.wrap(AdemEstMoche)(Instance,Components,Properties,Toggle)
+end
+
+
+
+	local Inputs = {
+        [Enum.KeyCode.LeftControl] = {"SlowDown"},
+        [Enum.KeyCode.W] = {"Forward", "Z", Vector3.new(0,0,-1),false},
+        [Enum.KeyCode.A] = {"Left","X", Vector3.new(-1,0,0),false},
+        [Enum.KeyCode.S] = {"Backward","Z", Vector3.new(0,0,1),false},
+        [Enum.KeyCode.D] = {"Right","X",Vector3.new(1,0,0),false},
+        [Enum.KeyCode.E] = {"Up","Y", Vector3.new(0,1,0),false},
+        [Enum.KeyCode.Q] = {"Down","Y",Vector3.new(0,-1,0),false}
+}
+
+pcall(function()
+		local Settings = {
+	
+			Speed = 10,
+			Slower = 3,
+			SlowKey = Enum.KeyCode.LeftControl,
+	
+			ForwardKey = Enum.KeyCode.W,
+			LeftKey = Enum.KeyCode.A,
+			BackwardKey = Enum.KeyCode.S,
+			RightKey = Enum.KeyCode.D,
+			UpKey = Enum.KeyCode.E,
+			DownKey = Enum.KeyCode.Q,
+	
+		}
+		
+		local Direction = Vector3.new(0,0,0)
+		local InterpolatedDir = Direction
+		local Tilt = 0
+		local InterpolatedTilt = Tilt
+		local Toggled = false
+		local FlySlower = false
+		local CameraPos = Camera.CFrame.Position
+	
+		function Lerp(a, b, t)
+			return a + (b - a) * t
+		end
+	
+		local LastPos = nil
+	
+function KeyHandler(inputObject, StartInput)
+    if toggles["ToggleFly"] and Inputs[inputObject] and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+        game.Players.LocalPlayer.Character.Humanoid.PlatformStand = true
+        if Inputs[inputObject][1] == "SlowDown" then
+            FlySlower = StartInput
+            return
+        end
+        
+        if StartInput then
+            Direction = Direction + Inputs[inputObject][3]
+            Inputs[inputObject][4] = true
+            else
+            Direction = Direction - Inputs[inputObject][3]
+            Inputs[inputObject][4] = false
+        end
+    end
+end
+
+pcall(function()
+	function Lerp(a, b, t)
+		return a + (b - a) * t
+	end
+
+	RunService.RenderStepped:Connect(function()
+		if toggles["ToggleFly"] and game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")  then
+			for i,v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+				if v:IsA("BasePart") then
+					v.Velocity = Vector3.new(0,0,0)
+				end
+			end
+			local HumanoidRootPart = Player.Character.HumanoidRootPart
+			InterpolatedDir = InterpolatedDir:Lerp((Direction * (FlySlower and (FlySpeed / 3) or FlySpeed)),.2)
+			HumanoidRootPart.CFrame = HumanoidRootPart.CFrame:Lerp(CFrame.new(HumanoidRootPart.Position,HumanoidRootPart.Position + Mouse.UnitRay.Direction) * CFrame.new(InterpolatedDir),.2)
+		end	
+	end)
+end)
+end)
+
+
+local CurrentPosition = Section2:NewLabel("N/A")
+	
+local SavedPositions = {"N/A"}
+local SavedPositionsToPositions = {}
+local SelectedPosition;
+local positions = Section1:NewDropdown("Saved positions", "Positions saved from the Save button", SavedPositions, function(x)
+    SelectedPosition = x
+    print(x)
+    print(SavedPositionsToPositions[x])
+    if SelectedPosition then
+    CurrentPosition:UpdateLabel(x)
+    end
+end)
+
+local SelectedPlayer;
+local playerlistdropdown = Section1:NewDropdown("Players", "Select the player of which you want to tween toward", PlayerList, function(x)
+    SelectedPlayer = x
+end)
+    
+   Section1:NewButton("Save", "Starts the tweening of player's position toward the saved one", function()
+       if SelectedPlayer and Players[SelectedPlayer] and Players[SelectedPlayer].Character and Players[SelectedPlayer].Character.HumanoidRootPart.Position then
+    SavedPositions[#SavedPositions+1] = SelectedPlayer .. "'s position" .. " [ " .. tostring(#SavedPositions+1) .. " ]"
+    SavedPositionsToPositions[SavedPositions[#SavedPositions]] = Game:GetService("Players")[SelectedPlayer].Character.HumanoidRootPart.Position
+    positions:Refresh(SavedPositions)
+        end
+   end)
+   
+local TweenStopped = false
+local IsTweening = false
+local Tween;
+Section2:NewButton("Tween toward position", "Starts the tweening of player's position toward the saved one", function()
+    TweenStopped = false
+
+     local goal = {CFrame = CFrame.new(SavedPositionsToPositions[SelectedPosition])}
+     local info = TweenInfo.new((Player.Character.HumanoidRootPart.Position - SavedPositionsToPositions[SelectedPosition]).Magnitude/20)
+     Tween = TweenService:Create(Player.Character.HumanoidRootPart, info, goal)
+     Tween:Play()
+     IsTweening = true
+     Tween.Completed:Connect(function()
+         IsTweening = false
+     end)
+
+end)
+
+local Paused = false
+Section2:NewButton("Pause", "Pauses the tweening of player's position", function()
+    if IsTweening and Tween then
+     Tween:Pause()    
+    end
+end)
+
+Section2:NewButton("Resume", "Resumes the tweening of player's position", function()
+     if Paused and Tween then
+         Tween:Start()
+         end
+end)
+
+Section2:NewButton("Stop", "Stop the tweening of player's position", function()
+     Tween:Cancel()
+     Tween = nil
+     TweenStopped = true
+end)
+
+function HumDied(Hum) 
+    Hum.Died:Connect(function()
+        wait(15)
+
+
+        if Player.PlayerGui.StatGui.Container.Health.Lives.Roller.Char == "3" then 
+                    local args = {
+            [1] = Player.PlayerGui.StatGui.Container.Health.Lives.Roller.Char.Text,
+            [2] = "All"
+        }
+        for i=1,5 do
+            wait(0.2)
+        game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(unpack(args))
+        end
+        end
+        if not Paused and not TweenStopped then
+            local goal = {CFrame = CFrame.new(SavedPositionsToPositions[SelectedPosition])}
+            local info = TweenInfo.new((Player.Character.HumanoidRootPart.Position - SavedPositionsToPositions[SelectedPosition]).Magnitude/20)
+            Tween = TweenService:Create(Player.Character.HumanoidRootPart, info, goal)
+            Tween:Play()
+            IsTweening = true
+            Tween.Completed:Connect(function()
+                IsTweening = false
+            end)
+        end
+    end)
+end
+
+
+Section1:NewToggle("Player Esp", "you can see other people through walls ig?", function(state)
+    toggles["TogglePlayerEsp"] = state
+    SetState("Player Esp", (toggles["TogglePlayerEsp"] and 0 or 1))
+end)
+
+Section1:NewToggle("Fly", "Fly, can also press T to toggle", function(state)
+	toggles["ToggleFly"] = not toggles["ToggleFly"]
+end)
+
+Section1:NewToggle("Noclip", "Can go through walls - L to toggle", function(state)
+    toggles["ToggleNoclip"] = not toggles["ToggleNoclip"]
+    for i,v in pairs(game.Workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CollisionGroup = NoclipGroups[toggles["ToggleNoclip"]]
+            end
+         end
+end)
+
+Section1:NewToggle("NoFall", "No fall damage - M to toggle", function(state)
+	toggles["ToggleNoFall"] = not toggles["ToggleNoFall"]
+end)
+
+
+
+
+	UserInputService.InputBegan:Connect(function(i,p)
+    if p then return
+    elseif i.KeyCode == Enum.KeyCode.U then
+        toggles["ToggleNoclip"] = not toggles["ToggleNoclip"]
+        SetState("Noclip", (toggles["ToggleNoclip"] and 0 or 1))
+        for i,v in pairs(game.Workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CollisionGroup = NoclipGroups[toggles["ToggleNoclip"]]
+            end
+        end
+     
+    elseif i.KeyCode == Enum.KeyCode.M then
+        toggles["ToggleNoFall"] = not toggles["ToggleNoFall"]
+        SetState("NoFall", (toggles["ToggleNoFall"] and 0 or 1))
+    elseif i.KeyCode == Enum.KeyCode.P then
+        toggles["TogglePlayerEsp"] = not toggles["TogglePlayerEsp"]
+        SetState("Player Esp", (toggles["TogglePlayerEsp"] and 0 or 1))
+    elseif i.KeyCode == Enum.KeyCode.T then
+        Direction = Vector3.new(0,0,0)
+        toggles["ToggleFly"] = not toggles["ToggleFly"]
+        SetState("Fly", (toggles["ToggleFly"] and 0 or 1))
+		game.Players.LocalPlayer.Character.Humanoid.PlatformStand = toggles["ToggleFly"]
+    end
+    if toggles["ToggleFly"] and Inputs[i.KeyCode] then
+        KeyHandler(i.KeyCode, true)
+    end
+end)
+
+UserInputService.InputEnded:connect(function(inputObject, gameProcessedEvent)
+    if not gameProcessedEvent then
+        if toggles["ToggleFly"] and Inputs[inputObject.KeyCode] and Inputs[inputObject.KeyCode][4] then
+            KeyHandler(inputObject.KeyCode, false)
+        end
+    end
+end)
+
+for i,v in pairs(game.Players:GetPlayers()) do
+    pcall(function()
+                if not table.find(PlayerList, v.Name) then
+                    PlayerList[#PlayerList+1] = v.Name
+                    playerlistdropdown:Refresh(PlayerList)
+                end
+            if v ~= Player and v.Character ~= nil and v.Character.HumanoidRootPart then
+
+    ApplyEsp(v, {"Character", "Head"}, Color3.new(1,1,1), {["Custom name"] = false, ["Name"] = true, ["Health"] = true, ["Distance"] = true}, "TogglePlayerEsp")
+    end
+        end)
+
+end
+ game.Players.PlayerAdded:Connect(function(v)
+    repeat wait() until v.Character ~= nil
+    pcall(function()
+                if not table.find(PlayerList, v.Name) then
+                    PlayerList[#PlayerList+1] = v.Name
+                    playerlistdropdown:Refresh(PlayerList)
+                end
+        if v ~= Player and v.Character ~= nil and v.Character.HumanoidRootPart then
+            
+            ApplyEsp(v, {"Character", "Head"}, Color3.new(1,1,1), {["Custom name"] = false, ["Name"] = true, ["Health"] = true, ["Distance"] = true}, "TogglePlayerEsp")
+        end
+    end)
+end)
+
+game.Players.PlayerDisconnecting:Connect(function(v)
+    if table.find(PlayerList,v) then
+            PlayerList[table.find(PlayerList,v)] = nil
+            playerlistdropdown:Refresh(PlayerList)
+        end
+end)
+
+while true do
+    wait(5)
+    pcall(function()
+        HumDied(Player.Character.Humanoid)
+        end)
+    end
