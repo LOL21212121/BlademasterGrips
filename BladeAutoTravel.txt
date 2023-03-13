@@ -233,6 +233,18 @@ pcall(function()
 end)
 end)
 
+function mysplit (inputstr, sep)
+    if sep then
+      
+        local t={}
+        for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+                table.insert(t, str)
+        end
+        return t
+    end
+end
+
+
 
 local CurrentPosition = Section2:NewLabel("N/A")
 	
@@ -366,7 +378,24 @@ Section1:NewToggle("NoFall", "No fall damage - M to toggle", function(state)
 	toggles["ToggleNoFall"] = not toggles["ToggleNoFall"]
 end)
 
+local CustomName = ""
+Section2:NewTextBox("Custom name", "The name given to your custom position", function(txt)
+    CustomName = txt
+end)
 
+local CustomPos = ""
+Section2:NewTextBox("Custom position", "The position attached to the name", function(txt)
+    CustomPos = txt
+end)
+
+Section2:NewButton("Create", "Creates a custom position in savings", function()
+    if CustomPos then
+    local FinalName = CustomName ~= "" and CustomName or "CustomName" .. " [ " .. tostring(#SavedPositions) .. " ]"
+    SavedPositions[#SavedPositions+1] = FinalName
+    SavedPositionsToPositions[FinalName] = Vector3.new(tonumber(mysplit(CustomPos,",")[1]),tonumber(mysplit(CustomPos,",")[2]),tonumber(mysplit(CustomPos,",")[3]))
+    positions:Refresh(SavedPositions)
+    end
+end)
 
 
 	UserInputService.InputBegan:Connect(function(i,p)
