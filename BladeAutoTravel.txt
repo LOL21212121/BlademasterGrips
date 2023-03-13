@@ -18,6 +18,13 @@ params.FilterDescendantsInstances = {Player.Character}
 params.FilterType = Enum.RaycastFilterType.Blacklist
 local FlySpeed = 10
 
+
+local CustomPositions = {
+    ["CustomPosition"] = Vector3.new(0,0,0)
+    
+}
+
+
 local ApplyParts = {}
 local PlayerList = {}
 local toggles = {
@@ -158,10 +165,9 @@ end
         [Enum.KeyCode.E] = {"Up","Y", Vector3.new(0,1,0),false},
         [Enum.KeyCode.Q] = {"Down","Y",Vector3.new(0,-1,0),false}
 }
-
+local Direction = Vector3.new(0,0,0)
 pcall(function()
 		local Settings = {
-	
 			Speed = 10,
 			Slower = 3,
 			SlowKey = Enum.KeyCode.LeftControl,
@@ -175,7 +181,7 @@ pcall(function()
 	
 		}
 		
-		local Direction = Vector3.new(0,0,0)
+		
 		local InterpolatedDir = Direction
 		local Tilt = 0
 		local InterpolatedTilt = Tilt
@@ -230,8 +236,14 @@ end)
 
 local CurrentPosition = Section2:NewLabel("N/A")
 	
-local SavedPositions = {"N/A"}
+local SavedPositions = {}
 local SavedPositionsToPositions = {}
+for i,v in pairs(CustomPositions) do
+    if type(v) == "vector" then
+    SavedPositionsToPositions[i] = v
+    SavedPositions[#SavedPositions+1] = i
+    end
+end
 local SelectedPosition;
 local positions = Section1:NewDropdown("Saved positions", "Positions saved from the Save button", SavedPositions, function(x)
     SelectedPosition = x
@@ -275,13 +287,14 @@ end)
 local Paused = false
 Section2:NewButton("Pause", "Pauses the tweening of player's position", function()
     if IsTweening and Tween then
+        Paused = true
      Tween:Pause()    
     end
 end)
 
 Section2:NewButton("Resume", "Resumes the tweening of player's position", function()
      if Paused and Tween then
-         Tween:Start()
+         --Tween:Start()
          end
 end)
 
@@ -293,16 +306,22 @@ end)
 
 function HumDied(Hum) 
     Hum.Died:Connect(function()
-        wait(15)
-
-
-        if Player.PlayerGui.StatGui.Container.Health.Lives.Roller.Char == "3" then 
+        wait(10)
+        if toggles["ToggleNoclip"] then 
+            for i,v in pairs(game.Workspace:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CollisionGroup = NoclipGroups[toggles["ToggleNoclip"]]
+                end
+        end   
+        end
+        if Player.PlayerGui.StatGui.Container.Health.Lives.Roller.Char == "3" then
+            TweenStopped = true
                     local args = {
             [1] = Player.PlayerGui.StatGui.Container.Health.Lives.Roller.Char.Text,
             [2] = "All"
         }
-        for i=1,5 do
-            wait(0.2)
+        for i=1,2 do
+            wait(0.3)
         game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(unpack(args))
         end
         end
@@ -326,7 +345,12 @@ Section1:NewToggle("Player Esp", "you can see other people through walls ig?", f
 end)
 
 Section1:NewToggle("Fly", "Fly, can also press T to toggle", function(state)
-	toggles["ToggleFly"] = not toggles["ToggleFly"]
+	        Direction = Vector3.new(0,0,0)
+        for i,v in pairs(Inputs) do 
+            if v[4] then v[4] = false end
+            end
+        toggles["ToggleFly"] = not toggles["ToggleFly"]
+		game.Players.LocalPlayer.Character.Humanoid.PlatformStand = toggles["ToggleFly"]
 end)
 
 Section1:NewToggle("Noclip", "Can go through walls - L to toggle", function(state)
@@ -363,7 +387,11 @@ end)
         toggles["TogglePlayerEsp"] = not toggles["TogglePlayerEsp"]
         SetState("Player Esp", (toggles["TogglePlayerEsp"] and 0 or 1))
     elseif i.KeyCode == Enum.KeyCode.T then
+        print(Inputs[Enum.KeyCode.W][4])
         Direction = Vector3.new(0,0,0)
+        for i,v in pairs(Inputs) do 
+            if v[4] then v[4] = false end
+            end
         toggles["ToggleFly"] = not toggles["ToggleFly"]
         SetState("Fly", (toggles["ToggleFly"] and 0 or 1))
 		game.Players.LocalPlayer.Character.Humanoid.PlatformStand = toggles["ToggleFly"]
